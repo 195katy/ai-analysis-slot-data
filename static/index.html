@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スロットデータ分析</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #333; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 24px; color: #1a1a2e; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card h2 { margin-bottom: 12px; font-size: 1.1rem; color: #16213e; }
+    textarea { width: 100%; height: 200px; border: 1px solid #ddd; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13px; resize: vertical; }
+    button { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+    .btn-primary { background: #0f3460; color: #fff; }
+    .btn-primary:hover { background: #16213e; }
+    .btn-primary:disabled { background: #999; cursor: not-allowed; }
+    .btn-secondary { background: #e94560; color: #fff; margin-left: 8px; }
+    .btn-secondary:hover { background: #c73e54; }
+    .btn-secondary:disabled { background: #999; cursor: not-allowed; }
+    .actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+    .spinner { display: none; width: 20px; height: 20px; border: 3px solid #ddd; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eee; }
+    th { background: #f0f0f0; position: sticky; top: 0; font-weight: 600; }
+    td:first-child, th:first-child { text-align: left; }
+    .table-wrap { max-height: 500px; overflow: auto; }
+    .analysis-result { line-height: 1.7; }
+    .analysis-result h1, .analysis-result h2, .analysis-result h3 { margin: 16px 0 8px; }
+    .analysis-result ul, .analysis-result ol { margin-left: 20px; }
+    .question-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 12px; }
+    #result-section, #analysis-section { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>スロットデータ分析ツール</h1>
+
+    <!-- 入力 -->
+    <div class="card">
+      <h2>1. データを貼り付け</h2>
+      <textarea id="raw-input" placeholder="スロットデータをここに貼り付けてください..."></textarea>
+      <div class="actions">
+        <button class="btn-primary" id="parse-btn" onclick="parseData()">整形する</button>
+        <div class="spinner" id="parse-spinner"></div>
+      </div>
+    </div>
+
+    <!-- 整形結果 -->
+    <div class="card" id="result-section">
+      <h2>2. 整形結果</h2>
+      <div class="table-wrap">
+        <table id="result-table"></table>
+      </div>
+      <div style="margin-top: 16px;">
+        <h2>3. データを保存</h2>
+        <div class="actions">
+          <input type="date" id="date-input" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+          <button class="btn-primary" id="save-btn" onclick="saveData()">データを保存</button>
+          <div class="spinner" id="save-spinner"></div>
+          <span id="save-status" style="color: green; font-size: 14px;"></span>
+        </div>
+      </div>
+      <div style="margin-top: 16px;">
+        <h2>4. AI分析</h2>
+        <input type="text" class="question-input" id="question-input" placeholder="追加の質問があれば入力（任意）">
+        <div class="actions">
+          <button class="btn-secondary" id="analyze-btn" onclick="analyzeData()">AIに分析させる</button>
+          <div class="spinner" id="analyze-spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分析結果 -->
+    <div class="card" id="analysis-section">
+      <h2>分析結果</h2>
+      <div class="analysis-result" id="analysis-result"></div>
+    </div>
+  </div>
+
+  <script>
+    // ローカル: http://localhost:8000  AWS: API GatewayのURL
+    const API_BASE = 'http://localhost:8000';
+    let parsedData = [];
+
+    async function parseData() {
+      const rawText = document.getElementById('raw-input').value.trim();
+      if (!rawText) return;
+
+      const btn = document.getElementById('parse-btn');
+      const spinner = document.getElementById('parse-spinner');
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+
+      try {
+        const res = await fetch(API_BASE + '/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_text: rawText }),
+        });
+        const json = await res.json();
+        parsedData = json.data;
+        renderTable(parsedData);
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('analysis-section').style.display = 'none';
+      } catch (e) {
+        alert('エラーが発生しました: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+      }
+    }
+
+    function renderTable(data) {
+      if (!data.length) return;
+      const headers = {
+        model_name: '機種名', machine_number: '台番号', diff_medals: '差枚',
+        games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
+        combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率'
+      };
+      // 実際に存在するキーだけ使う
+      const keys = Object.keys(headers).filter(k => data[0].hasOwnProperty(k));
+
+      let html = '<thead><tr>';
+      keys.forEach(k => html += `<th>${headers[k]}</th>`);
+      html += '</tr></thead><tbody>';
+
+      data.forEach(row => {
+        html += '<tr>';
+        keys.forEach(k => {
+          let val = row[k];
+          if (k === 'payout_rate') val = val + '%';
+          if (['combined_rate', 'bb_rate', 'rb_rate'].includes(k)) val = '1/' + val;
+          html += `<td>${val ?? ''}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      document.getElementById('result-table').innerHTML = html;
+    }
+
+    // 日付を今日にデフォルト設定
+    document.getElementById('date-input').valueAsDate = new Date();
+
+    async function saveData() {
+      if (!parsedData.length) return;
+      const date = document.getElementById('date-input').value;
+      if (!date) { alert('日付を入力してください'); return; }
+
+      const btn = document.getElementById('save-btn');
+      const spinner = document.getElementById('save-spinner');
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+      document.getElementById('save-status').textContent = '';
+
+      try {
+        const res = await fetch(API_BASE + '/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, data: parsedData }),
+        });
+        const json = await res.json();
+        document.getElementById('save-status').textContent = `${json.saved}件保存しました`;
+      } catch (e) {
+        alert('保存エラー: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+      }
+    }
+
+    async function analyzeData() {
+      if (!parsedData.length) return;
+
+      const btn = document.getElementById('analyze-btn');
+      const spinner = document.getElementById('analyze-spinner');
+      const question = document.getElementById('question-input').value.trim();
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+
+      try {
+        const res = await fetch(API_BASE + '/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: parsedData, question }),
+        });
+        const json = await res.json();
+        document.getElementById('analysis-result').innerHTML = markdownToHtml(json.analysis);
+        document.getElementById('analysis-section').style.display = 'block';
+      } catch (e) {
+        alert('エラーが発生しました: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+      }
+    }
+
+    // 簡易Markdown→HTML変換
+    function markdownToHtml(md) {
+      return md
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+        .replace(/\n{2,}/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    }
+  </script>
+</body>
+</html>
