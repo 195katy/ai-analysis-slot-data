@@ -38,7 +38,6 @@
   <div class="container">
     <h1>スロットデータ分析ツール</h1>
 
-    <!-- 入力 -->
     <div class="card">
       <h2>1. データを貼り付け</h2>
       <textarea id="raw-input" placeholder="スロットデータをここに貼り付けてください..."></textarea>
@@ -48,7 +47,6 @@
       </div>
     </div>
 
-    <!-- 整形結果 -->
     <div class="card" id="result-section">
       <h2>2. 整形結果</h2>
       <div class="table-wrap">
@@ -73,7 +71,6 @@
       </div>
     </div>
 
-    <!-- 分析結果 -->
     <div class="card" id="analysis-section">
       <h2>分析結果</h2>
       <div class="analysis-result" id="analysis-result"></div>
@@ -81,27 +78,37 @@
   </div>
 
   <script>
-    // ローカル: http://localhost:8000  AWS: API GatewayのURL
-    const API_BASE = 'http://localhost:8000';
+    var API_URL = window.API_URL || 'http://localhost:8000';
     let parsedData = [];
+
+    document.getElementById('date-input').value = new Date().toLocaleDateString('sv-SE');
+
+    async function pollResult(jobId) {
+      while (true) {
+        await new Promise(r => setTimeout(r, 2000));
+        const res = await fetch(API_URL + '/api/result?job_id=' + jobId);
+        const json = await res.json();
+        if (json.status !== 'processing') return json;
+      }
+    }
 
     async function parseData() {
       const rawText = document.getElementById('raw-input').value.trim();
       if (!rawText) return;
-
       const btn = document.getElementById('parse-btn');
       const spinner = document.getElementById('parse-spinner');
       btn.disabled = true;
       spinner.style.display = 'inline-block';
-
       try {
-        const res = await fetch(API_BASE + '/api/parse', {
+        const res = await fetch(API_URL + '/api/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ raw_text: rawText }),
         });
         const json = await res.json();
-        parsedData = json.data;
+        const result = await pollResult(json.job_id);
+        if (result.error) throw new Error(result.error);
+        parsedData = result.data;
         renderTable(parsedData);
         document.getElementById('result-section').style.display = 'block';
         document.getElementById('analysis-section').style.display = 'none';
@@ -120,13 +127,10 @@
         games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
         combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率'
       };
-      // 実際に存在するキーだけ使う
       const keys = Object.keys(headers).filter(k => data[0].hasOwnProperty(k));
-
       let html = '<thead><tr>';
       keys.forEach(k => html += `<th>${headers[k]}</th>`);
       html += '</tr></thead><tbody>';
-
       data.forEach(row => {
         html += '<tr>';
         keys.forEach(k => {
@@ -141,22 +145,17 @@
       document.getElementById('result-table').innerHTML = html;
     }
 
-    // 日付を今日にデフォルト設定
-    document.getElementById('date-input').valueAsDate = new Date();
-
     async function saveData() {
       if (!parsedData.length) return;
       const date = document.getElementById('date-input').value;
       if (!date) { alert('日付を入力してください'); return; }
-
       const btn = document.getElementById('save-btn');
       const spinner = document.getElementById('save-spinner');
       btn.disabled = true;
       spinner.style.display = 'inline-block';
       document.getElementById('save-status').textContent = '';
-
       try {
-        const res = await fetch(API_BASE + '/api/save', {
+        const res = await fetch(API_URL + '/api/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date, data: parsedData }),
@@ -173,21 +172,21 @@
 
     async function analyzeData() {
       if (!parsedData.length) return;
-
       const btn = document.getElementById('analyze-btn');
       const spinner = document.getElementById('analyze-spinner');
       const question = document.getElementById('question-input').value.trim();
       btn.disabled = true;
       spinner.style.display = 'inline-block';
-
       try {
-        const res = await fetch(API_BASE + '/api/analyze', {
+        const res = await fetch(API_URL + '/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: parsedData, question }),
         });
         const json = await res.json();
-        document.getElementById('analysis-result').innerHTML = markdownToHtml(json.analysis);
+        const result = await pollResult(json.job_id);
+        if (result.error) throw new Error(result.error);
+        document.getElementById('analysis-result').innerHTML = markdownToHtml(result.analysis);
         document.getElementById('analysis-section').style.display = 'block';
       } catch (e) {
         alert('エラーが発生しました: ' + e.message);
@@ -197,7 +196,6 @@
       }
     }
 
-    // 簡易Markdown→HTML変換
     function markdownToHtml(md) {
       return md
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')

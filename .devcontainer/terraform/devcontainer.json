@@ -1,0 +1,12 @@
+{
+  "name": "terraform",
+  "dockerComposeFile": "compose.yml",
+  "service": "terraform",
+  "workspaceFolder": "/workspace/terraform",
+  "customizations": {
+    "vscode": {
+      "extensions": ["hashicorp.terraform"]
+    }
+  },
+  "features": {}
+}

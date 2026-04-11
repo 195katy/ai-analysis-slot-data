@@ -8,7 +8,6 @@ _client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
 
 
 def invoke(system: str, user_message: str) -> str:
-    """Bedrock Claude を呼び出して応答テキストを返す"""
     response = _client.invoke_model(
         modelId=BEDROCK_MODEL_ID,
         contentType="application/json",
@@ -27,7 +26,6 @@ def invoke(system: str, user_message: str) -> str:
 
 
 def parse_slot_data(raw_text: str) -> list[dict]:
-    """雑なテキストを構造化JSONに変換する"""
     system = (
         "あなたはスロットデータの整形アシスタントです。"
         "ユーザーが貼り付けたスロット台のデータを解析し、JSON配列として返してください。"
@@ -43,7 +41,6 @@ def parse_slot_data(raw_text: str) -> list[dict]:
 
 
 def analyze_data(data: list[dict], question: str = "") -> str:
-    """整形済みデータをAIに分析させる"""
     system = (
         "あなたはスロットデータの分析エキスパートです。"
         "与えられたデータを分析し、傾向・注目台・設定推測などの洞察を提供してください。"
