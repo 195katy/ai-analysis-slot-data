@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: .
+    volumes:
+      - ../../:/workspace:cached
+      - ~/.aws:/root/.aws
+    ports:
+      - "8000:8000"
+    command: sleep infinity

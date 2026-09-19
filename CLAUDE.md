@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-スロットデータの整形・蓄積・AI分析を行うWebアプリ。フロントとAPIは分離構成。
+スロットデータのスクリーンショット画像をAIで解析し、構造化データとして抽出・表示するだけのシンプルなWebアプリ。
 
 ## 技術スタック
 
@@ -16,18 +16,16 @@
 
 - config.pyにデフォルト値を持たせない。全て環境変数必須。環境変数はterraform/main.tfで管理（AWS_REGIONはLambdaが自動設定）
 - フロントはS3静的ウェブサイトホスティング、APIはLambda Function URL
-- 重い処理（Bedrock呼び出し）はworker Lambdaに非同期委譲。フロントはポーリングで結果取得
-- 同一Dockerイメージをfrontendとworkerで共有。image_config.commandでハンドラーを切り替え
+- Lambdaは1つのみ。画像を受け取りBedrockを同期呼び出しして結果をそのまま返す（非同期委譲・ポーリング・S3への保存は行わない）
 
 ## ファイル構成
 
-- `app/frontend_handler.py` — Lambda Function URL用。軽い処理は直接、重い処理はworkerに委譲
-- `app/worker_handler.py` — Bedrock処理ワーカー。結果をS3 (jobs/) に保存
-- `app/bedrock.py` — Bedrock呼び出し。parse_slot_data / analyze_data
-- `app/storage.py` — CSV読み書き (S3)
-- `app/config.py` — 環境変数の読み込みだけ
-- `static/index.html` — フロントエンド。API_URLでAPI接続先を指定
+- `app/handler.py` — Lambda Function URL用ハンドラー。`/api/parse`で画像を受け取りBedrockを同期呼び出しして結果を返す
+- `app/bedrock.py` — Bedrock呼び出し。parse_slot_image（スクショ画像からのデータ抽出）
+- `app/config.py` — 環境変数の読み込みだけ（AWS_REGION, BEDROCK_MODEL_ID）
+- `static/index.html` — フロントエンド。画像アップロード→抽出→結果テーブル表示のみ。API_URLでAPI接続先を指定
 - `Dockerfile` — Lambda用コンテナイメージ
+- `.devcontainer/app/` — アプリ開発用DevContainer (Python 3.12 + uv)。ローカルの`.venv`は使わずこちらで動作確認する
 - `.devcontainer/terraform/` — インフラ用DevContainer (Terraform + Docker + AWS CLI)
 - `terraform/` — Terraform定義 (main.tf, providers.tf, outputs.tf)
 - `scripts/deploy.sh` — ビルド→ECR push→Lambda更新→フロントデプロイの一括スクリプト
@@ -39,6 +37,13 @@
 
 - IAMユーザーに `docs/iam-deploy-policy.json` のポリシーをアタッチ済み
 - `~/.aws/credentials` にアクセスキーを設定済み
+
+### appコンテナの起動（ローカル動作確認用）
+
+```bash
+cd .devcontainer/app && docker compose up -d --build
+docker exec app-app-1 python -c "import app.handler, app.bedrock"
+```
 
 ### terraformコンテナの起動
 
@@ -67,7 +72,6 @@ docker exec terraform-terraform-1 bash /workspace/scripts/deploy.sh
 ```bash
 # S3バケット内のファイルを先に削除
 docker exec terraform-terraform-1 aws s3 rm s3://slot-data-analysis-frontend --recursive --region ap-northeast-1
-docker exec terraform-terraform-1 aws s3 rm s3://slot-data-accumulation --recursive --region ap-northeast-1
 
 # リソース削除
 docker exec terraform-terraform-1 terraform -chdir=/workspace/terraform destroy -auto-approve

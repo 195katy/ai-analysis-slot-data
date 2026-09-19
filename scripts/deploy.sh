@@ -28,11 +28,6 @@ aws lambda update-function-code \
   --image-uri "$ECR_URL:latest" \
   --region "$REGION" > /dev/null
 
-aws lambda update-function-code \
-  --function-name "${FUNCTION_NAME}-worker" \
-  --image-uri "$ECR_URL:latest" \
-  --region "$REGION" > /dev/null 2>&1 || true
-
 echo "=== フロントエンドHTML デプロイ ==="
 if [ -n "$FRONTEND_API_URL" ] && [ -f "$PROJECT_ROOT/static/index.html" ]; then
   API_URL="${FRONTEND_API_URL%/}"
@@ -47,4 +42,4 @@ fi
 echo ""
 echo "=== デプロイ完了 ==="
 echo "  ECR: $ECR_URL:latest"
-echo "  Lambda: $FUNCTION_NAME, ${FUNCTION_NAME}-worker"
+echo "  Lambda: $FUNCTION_NAME"

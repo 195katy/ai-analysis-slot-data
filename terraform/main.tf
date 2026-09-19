@@ -3,14 +3,14 @@ data "aws_region" "current" {}
 
 locals {
   project_name = "slot-data-analysis"
-  model_id     = "anthropic.claude-3-haiku-20240307-v1:0"
+  model_id     = "jp.anthropic.claude-haiku-4-5-20251001-v1:0"
 }
 
 # ------------------------------------------------------------
-# S3 バケット（データ蓄積用）
+# S3 バケット（抽出データ蓄積用・非公開）
 # ------------------------------------------------------------
 resource "aws_s3_bucket" "data" {
-  bucket = "slot-data-accumulation"
+  bucket = "${local.project_name}-data"
 }
 
 # ------------------------------------------------------------
@@ -55,56 +55,49 @@ resource "aws_iam_role_policy" "lambda" {
       },
       {
         Effect   = "Allow"
+        Action   = ["bedrock:InvokeModel"]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = aws_s3_bucket.data.arn
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Action   = ["s3:GetObject", "s3:PutObject"]
         Resource = "${aws_s3_bucket.data.arn}/*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["bedrock:InvokeModel"]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = ["lambda:InvokeFunction"]
-        Resource = "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${local.project_name}-worker"
       },
     ]
   })
 }
 
 # ------------------------------------------------------------
-# Lambda 関数 — フロントエンドAPI
+# Lambda 関数 — 画像抽出API（同期処理）
 # ------------------------------------------------------------
-resource "aws_lambda_function" "frontend" {
+resource "aws_lambda_function" "app" {
   function_name = local.project_name
   role          = aws_iam_role.lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.app.repository_url}:latest"
   image_config {
-    command = ["app.frontend_handler.handler"]
+    command = ["app.handler.handler"]
   }
-  timeout     = 30
+  timeout     = 60
   memory_size = 256
 
   environment {
     variables = {
-      BEDROCK_MODEL_ID     = local.model_id
-      S3_BUCKET            = aws_s3_bucket.data.id
-      S3_CSV_KEY           = "data.csv"
-      WORKER_FUNCTION_NAME = "${local.project_name}-worker"
+      BEDROCK_MODEL_ID = local.model_id
+      S3_BUCKET        = aws_s3_bucket.data.id
     }
   }
 
   depends_on = [aws_iam_role_policy.lambda]
 }
 
-resource "aws_lambda_function_url" "frontend" {
-  function_name      = aws_lambda_function.frontend.function_name
+resource "aws_lambda_function_url" "app" {
+  function_name      = aws_lambda_function.app.function_name
   authorization_type = "NONE"
 
   cors {
@@ -113,31 +106,6 @@ resource "aws_lambda_function_url" "frontend" {
     allow_headers = ["content-type"]
     max_age       = 3600
   }
-}
-
-# ------------------------------------------------------------
-# Lambda 関数 — Bedrockワーカー
-# ------------------------------------------------------------
-resource "aws_lambda_function" "worker" {
-  function_name = "${local.project_name}-worker"
-  role          = aws_iam_role.lambda.arn
-  package_type  = "Image"
-  image_uri     = "${aws_ecr_repository.app.repository_url}:latest"
-  image_config {
-    command = ["app.worker_handler.handler"]
-  }
-  timeout     = 300
-  memory_size = 512
-
-  environment {
-    variables = {
-      BEDROCK_MODEL_ID = local.model_id
-      S3_BUCKET        = aws_s3_bucket.data.id
-      S3_CSV_KEY       = "data.csv"
-    }
-  }
-
-  depends_on = [aws_iam_role_policy.lambda]
 }
 
 # ------------------------------------------------------------

@@ -4,13 +4,13 @@ output "ecr_repository_url" {
 }
 
 output "lambda_function_name" {
-  description = "フロントエンドLambda関数名"
-  value       = aws_lambda_function.frontend.function_name
+  description = "Lambda関数名"
+  value       = aws_lambda_function.app.function_name
 }
 
 output "frontend_url" {
-  description = "フロントエンドAPI URL"
-  value       = aws_lambda_function_url.frontend.function_url
+  description = "API URL"
+  value       = aws_lambda_function_url.app.function_url
 }
 
 output "frontend_website_url" {

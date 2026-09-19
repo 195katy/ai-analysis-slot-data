@@ -6,4 +6,4 @@ RUN uv pip install --system --no-cache -r pyproject.toml
 
 COPY app/ ${LAMBDA_TASK_ROOT}/app/
 
-CMD ["app.frontend_handler.handler"]
+CMD ["app.handler.handler"]

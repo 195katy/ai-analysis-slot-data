@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スロットデータ分析</title>
+  <title>スロットデータ抽出</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #333; }
@@ -11,15 +11,13 @@
     h1 { text-align: center; margin-bottom: 24px; color: #1a1a2e; }
     .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .card h2 { margin-bottom: 12px; font-size: 1.1rem; color: #16213e; }
-    textarea { width: 100%; height: 200px; border: 1px solid #ddd; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13px; resize: vertical; }
     button { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
     .btn-primary { background: #0f3460; color: #fff; }
     .btn-primary:hover { background: #16213e; }
     .btn-primary:disabled { background: #999; cursor: not-allowed; }
-    .btn-secondary { background: #e94560; color: #fff; margin-left: 8px; }
-    .btn-secondary:hover { background: #c73e54; }
-    .btn-secondary:disabled { background: #999; cursor: not-allowed; }
-    .actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+    .actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+    label { font-size: 14px; }
     .spinner { display: none; width: 20px; height: 20px; border: 3px solid #ddd; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -27,91 +25,184 @@
     th { background: #f0f0f0; position: sticky; top: 0; font-weight: 600; }
     td:first-child, th:first-child { text-align: left; }
     .table-wrap { max-height: 500px; overflow: auto; }
-    .analysis-result { line-height: 1.7; }
-    .analysis-result h1, .analysis-result h2, .analysis-result h3 { margin: 16px 0 8px; }
-    .analysis-result ul, .analysis-result ol { margin-left: 20px; }
-    .question-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 12px; }
-    #result-section, #analysis-section { display: none; }
+    .btn-small { padding: 6px 14px; font-size: 13px; }
+    .breadcrumb { margin-bottom: 8px; font-size: 14px; }
+    .breadcrumb-link { color: #0f3460; cursor: pointer; text-decoration: underline; }
+    .tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    .tab-btn { background: #e8e8e8; color: #555; border-radius: 6px 6px 0 0; padding: 10px 20px; }
+    .tab-btn.active { background: #fff; color: #0f3460; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .tendency-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+    .tendency-chip { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 10px 14px; font-size: 13px; min-width: 220px; }
+    .tendency-poles { display: flex; justify-content: space-between; font-weight: 600; color: #333; margin-bottom: 8px; }
+    .tendency-pole.active { color: #0f3460; }
+    .tendency-track { position: relative; height: 6px; border-radius: 3px; background: #e5e5e5; margin: 0 6px; }
+    .tendency-marker { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: #0f3460; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px #fff; }
   </style>
 </head>
 <body>
+  <h1>スロットデータ抽出</h1>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">データ入力</button>
+    <button class="tab-btn" id="tab-btn-view" onclick="switchTab('view')">データ閲覧</button>
+  </div>
+
   <div class="container">
-    <h1>スロットデータ分析ツール</h1>
-
-    <div class="card">
-      <h2>1. データを貼り付け</h2>
-      <textarea id="raw-input" placeholder="スロットデータをここに貼り付けてください..."></textarea>
-      <div class="actions">
-        <button class="btn-primary" id="parse-btn" onclick="parseData()">整形する</button>
-        <div class="spinner" id="parse-spinner"></div>
+    <!-- 入力タブ -->
+    <div class="tab-panel active" id="tab-panel-input">
+      <div class="card">
+        <h2>スクリーンショット画像から抽出</h2>
+        <div class="actions">
+          <label>日付:</label>
+          <select id="year-select"></select>
+          <select id="month-select"></select>
+          <select id="day-select"></select>
+          <label>店舗名:</label>
+          <select id="store-select">
+            <option value="楽園大山">楽園大山</option>
+          </select>
+          <label>機種名:</label>
+          <select id="model-select">
+            <option value="マイジャグラーV">マイジャグラーV</option>
+          </select>
+        </div>
+        <div class="actions">
+          <input type="file" id="image-input" accept="image/*" onchange="onImageSelected(event)">
+          <button class="btn-primary" id="parse-image-btn" onclick="parseImage()" disabled>画像から抽出する</button>
+          <div class="spinner" id="parse-image-spinner"></div>
+        </div>
+        <img id="image-preview" style="display:none; max-width: 100%; max-height: 300px; margin-top: 8px; border: 1px solid #ddd; border-radius: 6px;">
       </div>
     </div>
 
-    <div class="card" id="result-section">
-      <h2>2. 整形結果</h2>
-      <div class="table-wrap">
-        <table id="result-table"></table>
-      </div>
-      <div style="margin-top: 16px;">
-        <h2>3. データを保存</h2>
-        <div class="actions">
-          <input type="date" id="date-input" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
-          <button class="btn-primary" id="save-btn" onclick="saveData()">データを保存</button>
-          <div class="spinner" id="save-spinner"></div>
-          <span id="save-status" style="color: green; font-size: 14px;"></span>
+    <!-- 閲覧タブ -->
+    <div class="tab-panel" id="tab-panel-view">
+      <div class="card">
+        <h2>履歴（蓄積データ）</h2>
+        <div class="actions" style="margin-top: 0;">
+          <button class="btn-primary" onclick="loadHistory()">更新</button>
+        </div>
+        <div class="breadcrumb" id="history-breadcrumb"></div>
+        <div id="tendency-panel" style="display:none; background:#f5f5f5; border-radius:6px; padding:12px; margin-bottom:12px;">
+          <div class="actions" style="margin-top:0;">
+            <strong>店舗×機種の設定傾向</strong>
+            <button class="btn-primary btn-small" onclick="updateTendency()">傾向を更新する</button>
+            <div class="spinner" id="tendency-spinner"></div>
+          </div>
+          <div id="tendency-meta" style="font-size:12px; color:#777; margin-top:4px;"></div>
+          <div class="tendency-grid" id="tendency-grid"></div>
+        </div>
+        <div id="predict-panel" style="display:none; background:#f5f5f5; border-radius:6px; padding:12px; margin-bottom:12px;">
+          <div class="actions" style="margin-top:0;">
+            <strong>翌日の設定予測</strong>
+            <button class="btn-primary btn-small" onclick="updatePrediction()">予測する</button>
+            <div class="spinner" id="predict-spinner"></div>
+          </div>
+          <div id="predict-meta" style="font-size:12px; color:#777; margin-top:4px;"></div>
+          <div class="table-wrap" id="predict-table-wrap" style="display:none; margin-top: 8px;">
+            <table id="predict-table"></table>
+          </div>
+        </div>
+        <div id="history-nav"></div>
+        <div class="table-wrap" id="history-table-wrap" style="display:none; margin-top: 12px;">
+          <table id="history-table"></table>
         </div>
       </div>
-      <div style="margin-top: 16px;">
-        <h2>4. AI分析</h2>
-        <input type="text" class="question-input" id="question-input" placeholder="追加の質問があれば入力（任意）">
-        <div class="actions">
-          <button class="btn-secondary" id="analyze-btn" onclick="analyzeData()">AIに分析させる</button>
-          <div class="spinner" id="analyze-spinner"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" id="analysis-section">
-      <h2>分析結果</h2>
-      <div class="analysis-result" id="analysis-result"></div>
     </div>
   </div>
 
   <script>
     var API_URL = window.API_URL || 'http://localhost:8000';
-    let parsedData = [];
+    let selectedImage = null; // { base64, mediaType }
 
-    document.getElementById('date-input').value = new Date().toLocaleDateString('sv-SE');
-
-    async function pollResult(jobId) {
-      while (true) {
-        await new Promise(r => setTimeout(r, 2000));
-        const res = await fetch(API_URL + '/api/result?job_id=' + jobId);
-        const json = await res.json();
-        if (json.status !== 'processing') return json;
-      }
+    // --- タブ切り替え ---
+    function switchTab(tab) {
+      document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
+      document.getElementById('tab-btn-view').classList.toggle('active', tab === 'view');
+      document.getElementById('tab-panel-input').classList.toggle('active', tab === 'input');
+      document.getElementById('tab-panel-view').classList.toggle('active', tab === 'view');
+      if (tab === 'view') loadHistory();
     }
 
-    async function parseData() {
-      const rawText = document.getElementById('raw-input').value.trim();
-      if (!rawText) return;
-      const btn = document.getElementById('parse-btn');
-      const spinner = document.getElementById('parse-spinner');
+    // --- 日付プルダウン ---
+    function initDateSelects() {
+      const today = new Date();
+      const yearSelect = document.getElementById('year-select');
+      const monthSelect = document.getElementById('month-select');
+      const daySelect = document.getElementById('day-select');
+
+      const currentYear = today.getFullYear();
+      for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+        yearSelect.innerHTML += `<option value="${y}">${y}年</option>`;
+      }
+      for (let m = 1; m <= 12; m++) {
+        monthSelect.innerHTML += `<option value="${m}">${m}月</option>`;
+      }
+      for (let d = 1; d <= 31; d++) {
+        daySelect.innerHTML += `<option value="${d}">${d}日</option>`;
+      }
+
+      yearSelect.value = currentYear;
+      monthSelect.value = today.getMonth() + 1;
+      daySelect.value = today.getDate();
+    }
+
+    function getSelectedDate() {
+      const y = document.getElementById('year-select').value;
+      const m = document.getElementById('month-select').value.padStart(2, '0');
+      const d = document.getElementById('day-select').value.padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    initDateSelects();
+
+    function onImageSelected(event) {
+      const file = event.target.files[0];
+      const btn = document.getElementById('parse-image-btn');
+      if (!file) {
+        selectedImage = null;
+        btn.disabled = true;
+        document.getElementById('image-preview').style.display = 'none';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        selectedImage = {
+          base64: dataUrl.split(',')[1],
+          mediaType: file.type || 'image/jpeg',
+        };
+        const preview = document.getElementById('image-preview');
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+        btn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function parseImage() {
+      if (!selectedImage) return;
+      const btn = document.getElementById('parse-image-btn');
+      const spinner = document.getElementById('parse-image-spinner');
       btn.disabled = true;
       spinner.style.display = 'inline-block';
       try {
         const res = await fetch(API_URL + '/api/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw_text: rawText }),
+          body: JSON.stringify({
+            image_base64: selectedImage.base64,
+            media_type: selectedImage.mediaType,
+            date: getSelectedDate(),
+            store_name: document.getElementById('store-select').value,
+            model_name: document.getElementById('model-select').value,
+          }),
         });
         const json = await res.json();
-        const result = await pollResult(json.job_id);
-        if (result.error) throw new Error(result.error);
-        parsedData = result.data;
-        renderTable(parsedData);
-        document.getElementById('result-section').style.display = 'block';
-        document.getElementById('analysis-section').style.display = 'none';
+        if (json.error) throw new Error(json.error);
+        loadHistory();
       } catch (e) {
         alert('エラーが発生しました: ' + e.message);
       } finally {
@@ -120,94 +211,283 @@
       }
     }
 
-    function renderTable(data) {
-      if (!data.length) return;
+    // --- 履歴 ---
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const headers = lines[0].split(',');
+      return lines.slice(1).filter(l => l.length).map(line => {
+        const values = line.split(',');
+        const row = {};
+        headers.forEach((h, i) => row[h] = values[i]);
+        return row;
+      });
+    }
+
+    let historyRows = [];
+    let historyState = { store: null, date: null, model: null, machine: null };
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(API_URL + '/api/history');
+        const text = await res.text();
+        historyRows = parseCsv(text);
+        historyState = { store: null, date: null, model: null, machine: null };
+        renderHistoryNav();
+      } catch (e) {
+        console.error('履歴の取得に失敗しました', e);
+      }
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.filter(v => v))].sort();
+    }
+
+    function renderBreadcrumb() {
+      const parts = [{ label: '店舗名を選択', state: {} }];
+      if (historyState.store) parts.push({ label: historyState.store, state: { store: historyState.store } });
+      if (historyState.date) parts.push({ label: historyState.date, state: { store: historyState.store, date: historyState.date } });
+      if (historyState.model) parts.push({ label: historyState.model, state: { store: historyState.store, date: historyState.date, model: historyState.model } });
+      if (historyState.machine) parts.push({ label: `台番号 ${historyState.machine}`, state: { ...historyState } });
+
+      document.getElementById('history-breadcrumb').innerHTML = parts.map((p, i) => {
+        const isLast = i === parts.length - 1;
+        return isLast
+          ? `<strong>${p.label}</strong>`
+          : `<span class="breadcrumb-link" onclick='goToHistoryState(${JSON.stringify(p.state)})'>${p.label}</span> &gt; `;
+      }).join('');
+    }
+
+    function goToHistoryState(state) {
+      historyState = { store: state.store || null, date: state.date || null, model: state.model || null, machine: state.machine || null };
+      renderHistoryNav();
+    }
+
+    function renderButtonList(items) {
+      if (!items.length) return '<p>データがありません</p>';
+      return '<div class="actions" style="margin-top: 0;">' +
+        items.map(v => `<button class="btn-primary btn-small" onclick='selectHistoryValue(${JSON.stringify(v)})'>${v}</button>`).join('') +
+        '</div>';
+    }
+
+    function selectHistoryValue(value) {
+      if (!historyState.store) historyState.store = value;
+      else if (!historyState.date) historyState.date = value;
+      else if (!historyState.model) historyState.model = value;
+      renderHistoryNav();
+    }
+
+    function selectMachine(machineNumber) {
+      historyState.machine = machineNumber;
+      renderHistoryNav();
+    }
+
+    function renderHistoryNav() {
+      renderBreadcrumb();
+      const navEl = document.getElementById('history-nav');
+      const tableWrap = document.getElementById('history-table-wrap');
+
+      if (!historyState.store) {
+        tableWrap.style.display = 'none';
+        document.getElementById('tendency-panel').style.display = 'none';
+        document.getElementById('predict-panel').style.display = 'none';
+        navEl.innerHTML = renderButtonList(uniqueSorted(historyRows.map(r => r.store_name)));
+        return;
+      }
+      if (!historyState.date) {
+        tableWrap.style.display = 'none';
+        document.getElementById('tendency-panel').style.display = 'none';
+        document.getElementById('predict-panel').style.display = 'none';
+        const dates = historyRows.filter(r => r.store_name === historyState.store).map(r => r.date);
+        navEl.innerHTML = renderButtonList(uniqueSorted(dates));
+        return;
+      }
+      if (!historyState.model) {
+        tableWrap.style.display = 'none';
+        document.getElementById('tendency-panel').style.display = 'none';
+        document.getElementById('predict-panel').style.display = 'none';
+        const models = historyRows
+          .filter(r => r.store_name === historyState.store && r.date === historyState.date)
+          .map(r => r.model_name);
+        navEl.innerHTML = renderButtonList(uniqueSorted(models));
+        return;
+      }
+
+      showTendencyPanel();
+      document.getElementById('predict-panel').style.display = 'block';
+
+      navEl.innerHTML = '';
+      tableWrap.style.display = 'block';
+
+      if (!historyState.machine) {
+        const rows = historyRows.filter(r =>
+          r.store_name === historyState.store && r.date === historyState.date && r.model_name === historyState.model
+        );
+        renderMachineListTable(rows);
+        return;
+      }
+
+      // 台番号単体：日付を問わず店舗×機種×台番号で全期間のデータを集計
+      const machineRows = historyRows
+        .filter(r => r.store_name === historyState.store && r.model_name === historyState.model && r.machine_number === historyState.machine)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      renderMachineHistoryTable(machineRows);
+    }
+
+    async function showTendencyPanel() {
+      const panel = document.getElementById('tendency-panel');
+      panel.style.display = 'block';
+      document.getElementById('tendency-meta').textContent = '読込中...';
+      document.getElementById('tendency-grid').innerHTML = '';
+      try {
+        const params = new URLSearchParams({ store_name: historyState.store, model_name: historyState.model });
+        const res = await fetchWithTimeout(API_URL + '/api/tendency?' + params.toString());
+        const json = await res.json();
+        renderTendency(json.tendency);
+      } catch (e) {
+        document.getElementById('tendency-meta').textContent = '取得に失敗しました: ' + e.message;
+      }
+    }
+
+    async function fetchWithTimeout(url, options = {}, timeoutMs = 20000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function renderTendency(tendency) {
+      const metaEl = document.getElementById('tendency-meta');
+      const gridEl = document.getElementById('tendency-grid');
+      if (!tendency) {
+        metaEl.textContent = 'まだ傾向データがありません。「傾向を更新する」で分析してください。';
+        gridEl.innerHTML = '';
+        return;
+      }
+      metaEl.textContent = `${tendency.based_on_rows}件のデータに基づく（更新: ${tendency.updated_at}）`;
+      gridEl.innerHTML = tendency.items.map(item => {
+        const level = item.level ?? 3;
+        const position = ((5 - level) / 4) * 100; // level=5(pole_left) -> 0%, level=1(pole_right) -> 100%
+        const leftActive = level > 3;
+        const rightActive = level < 3;
+        return `
+          <div class="tendency-chip">
+            <div class="tendency-poles">
+              <span class="tendency-pole${leftActive ? ' active' : ''}">${item.pole_left}</span>
+              <span class="tendency-pole${rightActive ? ' active' : ''}">${item.pole_right}</span>
+            </div>
+            <div class="tendency-track"><div class="tendency-marker" style="left:${position}%;"></div></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function updateTendency() {
+      const spinner = document.getElementById('tendency-spinner');
+      spinner.style.display = 'inline-block';
+      try {
+        const res = await fetchWithTimeout(API_URL + '/api/tendency', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ store_name: historyState.store, model_name: historyState.model }),
+        }, 60000);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        renderTendency(json.tendency);
+      } catch (e) {
+        alert('傾向分析エラー: ' + e.message);
+      } finally {
+        spinner.style.display = 'none';
+      }
+    }
+
+    async function updatePrediction() {
+      const spinner = document.getElementById('predict-spinner');
+      const metaEl = document.getElementById('predict-meta');
+      const tableWrap = document.getElementById('predict-table-wrap');
+      spinner.style.display = 'inline-block';
+      metaEl.textContent = '';
+      try {
+        const res = await fetchWithTimeout(API_URL + '/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ store_name: historyState.store, model_name: historyState.model }),
+        }, 60000);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        renderPrediction(json.predictions);
+      } catch (e) {
+        alert('予測エラー: ' + e.message);
+      } finally {
+        spinner.style.display = 'none';
+      }
+    }
+
+    function renderPrediction(predictions) {
+      const metaEl = document.getElementById('predict-meta');
+      const tableWrap = document.getElementById('predict-table-wrap');
+      if (!predictions || !predictions.length) {
+        metaEl.textContent = '根拠の強い候補はありませんでした';
+        tableWrap.style.display = 'none';
+        return;
+      }
+      metaEl.textContent = `本命候補 ${predictions.length}台`;
+      let html = '<thead><tr><th>台番号</th><th>確信度</th></tr></thead><tbody>';
+      predictions.forEach(p => {
+        const conf = p.confidence ?? 0;
+        html += `<tr><td>${p.machine_number}</td><td>${'●'.repeat(conf)}${'○'.repeat(5 - conf)}</td></tr>`;
+      });
+      html += '</tbody>';
+      document.getElementById('predict-table').innerHTML = html;
+      tableWrap.style.display = 'block';
+    }
+
+    function renderMachineListTable(data) {
       const headers = {
-        model_name: '機種名', machine_number: '台番号', diff_medals: '差枚',
+        machine_number: '台番号', diff_medals: '差枚',
         games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
-        combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率'
+        combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率', estimated_setting: '推定設定'
       };
-      const keys = Object.keys(headers).filter(k => data[0].hasOwnProperty(k));
+      const keys = Object.keys(headers);
       let html = '<thead><tr>';
       keys.forEach(k => html += `<th>${headers[k]}</th>`);
       html += '</tr></thead><tbody>';
       data.forEach(row => {
         html += '<tr>';
         keys.forEach(k => {
-          let val = row[k];
-          if (k === 'payout_rate') val = val + '%';
-          if (['combined_rate', 'bb_rate', 'rb_rate'].includes(k)) val = '1/' + val;
-          html += `<td>${val ?? ''}</td>`;
+          if (k === 'machine_number') {
+            html += `<td><span class="breadcrumb-link" onclick='selectMachine(${JSON.stringify(row.machine_number)})'>${row.machine_number}</span></td>`;
+          } else {
+            html += `<td>${row[k] ?? ''}</td>`;
+          }
         });
         html += '</tr>';
       });
       html += '</tbody>';
-      document.getElementById('result-table').innerHTML = html;
+      document.getElementById('history-table').innerHTML = html;
     }
 
-    async function saveData() {
-      if (!parsedData.length) return;
-      const date = document.getElementById('date-input').value;
-      if (!date) { alert('日付を入力してください'); return; }
-      const btn = document.getElementById('save-btn');
-      const spinner = document.getElementById('save-spinner');
-      btn.disabled = true;
-      spinner.style.display = 'inline-block';
-      document.getElementById('save-status').textContent = '';
-      try {
-        const res = await fetch(API_URL + '/api/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date, data: parsedData }),
-        });
-        const json = await res.json();
-        document.getElementById('save-status').textContent = `${json.saved}件保存しました`;
-      } catch (e) {
-        alert('保存エラー: ' + e.message);
-      } finally {
-        btn.disabled = false;
-        spinner.style.display = 'none';
-      }
+    function renderMachineHistoryTable(data) {
+      const headers = {
+        date: '日付', diff_medals: '差枚',
+        games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
+        combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率', estimated_setting: '推定設定'
+      };
+      const keys = Object.keys(headers);
+      let html = '<thead><tr>';
+      keys.forEach(k => html += `<th>${headers[k]}</th>`);
+      html += '</tr></thead><tbody>';
+      data.forEach(row => {
+        html += '<tr>';
+        keys.forEach(k => html += `<td>${row[k] ?? ''}</td>`);
+        html += '</tr>';
+      });
+      html += '</tbody>';
+      document.getElementById('history-table').innerHTML = html;
     }
 
-    async function analyzeData() {
-      if (!parsedData.length) return;
-      const btn = document.getElementById('analyze-btn');
-      const spinner = document.getElementById('analyze-spinner');
-      const question = document.getElementById('question-input').value.trim();
-      btn.disabled = true;
-      spinner.style.display = 'inline-block';
-      try {
-        const res = await fetch(API_URL + '/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: parsedData, question }),
-        });
-        const json = await res.json();
-        const result = await pollResult(json.job_id);
-        if (result.error) throw new Error(result.error);
-        document.getElementById('analysis-result').innerHTML = markdownToHtml(result.analysis);
-        document.getElementById('analysis-section').style.display = 'block';
-      } catch (e) {
-        alert('エラーが発生しました: ' + e.message);
-      } finally {
-        btn.disabled = false;
-        spinner.style.display = 'none';
-      }
-    }
-
-    function markdownToHtml(md) {
-      return md
-        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/^- (.+)$/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-        .replace(/\n{2,}/g, '<br><br>')
-        .replace(/\n/g, '<br>');
-    }
   </script>
 </body>
 </html>

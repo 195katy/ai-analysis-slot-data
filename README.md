@@ -1,30 +1,23 @@
 # Slot Data Analyzer
 
-スロットデータの整形・蓄積・AI分析ツール。
-
-コピペした雑なスロットデータをAI（AWS Bedrock Claude）で構造化し、CSVとしてS3に蓄積。蓄積データに対してAI分析を行える。
+スロットデータのスクリーンショット画像をAI（AWS Bedrock Claude）で解析し、表形式に抽出して表示するだけのシンプルなツール。
 
 ## アーキテクチャ
 
 ```
 ブラウザ → S3 (静的ウェブサイト) ... フロントエンド配信
-         → Lambda Function URL (frontend) ... API
-              ├── save, history → 直接処理 (S3 CSV読み書き)
-              └── parse, analyze → Lambda (worker) を非同期invoke
-                                    → Bedrock Claude
-                                    → 結果をS3 (jobs/) に保存
-         → ポーリング (GET /api/result) ... 結果取得
+         → Lambda Function URL (POST /api/parse) ... 画像を受け取り
+              → Bedrock Claude を同期呼び出し
+              → 抽出結果(JSON)をそのままレスポンスで返す
 ```
 
 ## AWSリソース
 
 | リソース | 用途 |
 |---------|------|
-| S3 (slot-data-accumulation) | データCSV蓄積 + ジョブ結果一時保存 |
 | S3 (slot-data-analysis-frontend) | フロントエンドHTML配信 |
 | ECR | Dockerイメージ保管 |
-| Lambda (slot-data-analysis) | フロントエンドAPI |
-| Lambda (slot-data-analysis-worker) | Bedrock処理ワーカー |
+| Lambda (slot-data-analysis) | 画像抽出API |
 | IAM Role | Lambda実行ロール |
 
 ## デプロイ
@@ -61,6 +54,5 @@ docker exec terraform-terraform-1 bash /workspace/scripts/deploy.sh
 
 ```bash
 docker exec terraform-terraform-1 aws s3 rm s3://slot-data-analysis-frontend --recursive --region ap-northeast-1
-docker exec terraform-terraform-1 aws s3 rm s3://slot-data-accumulation --recursive --region ap-northeast-1
 docker exec terraform-terraform-1 terraform -chdir=/workspace/terraform destroy -auto-approve
 ```
