@@ -3,55 +3,187 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スロットデータ抽出</title>
+  <title>スロヨミ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rocknroll+One&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #333; }
-    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
-    h1 { text-align: center; margin-bottom: 24px; color: #1a1a2e; }
-    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .card h2 { margin-bottom: 12px; font-size: 1.1rem; color: #16213e; }
-    button { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-    .btn-primary { background: #0f3460; color: #fff; }
-    .btn-primary:hover { background: #16213e; }
-    .btn-primary:disabled { background: #999; cursor: not-allowed; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 15% 0%, #1c2748 0%, #0d0d18 45%, #090911 100%);
+      background-attachment: fixed;
+      color: #333;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); border-top: 4px solid #f9c74f; }
+    .card h2 { margin-bottom: 12px; font-size: 1.05rem; color: #16213e; font-weight: 700; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+    .card h2::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: linear-gradient(145deg, #f9c74f, #e94560); transform: rotate(45deg); }
+    button { padding: 10px 24px; border: none; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 700; transition: transform 0.15s, box-shadow 0.15s, background 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, #16213e, #0f3460); color: #fff; box-shadow: 0 3px 10px rgba(15,52,96,0.4); }
+    .btn-primary:hover { background: linear-gradient(135deg, #0f3460, #16213e); transform: translateY(-1px); box-shadow: 0 5px 14px rgba(15,52,96,0.5); }
+    .btn-primary:disabled { background: #999; cursor: not-allowed; transform: none; box-shadow: none; }
     .actions { margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-    label { font-size: 14px; }
+    select { padding: 9px 12px; border: 1px solid #d8dce6; border-radius: 8px; font-size: 14px; background: #fbfbfd; transition: border-color 0.15s, box-shadow 0.15s; }
+    select:focus { outline: none; border-color: #f9c74f; box-shadow: 0 0 0 3px rgba(249,199,79,0.25); }
+    label { font-size: 14px; color: #555; }
     .spinner { display: none; width: 20px; height: 20px; border: 3px solid #ddd; border-top-color: #0f3460; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eee; }
-    th { background: #f0f0f0; position: sticky; top: 0; font-weight: 600; }
+    th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid #eee; }
+    th { background: linear-gradient(135deg, #16213e, #0f3460); color: #fff; position: sticky; top: 0; font-weight: 600; letter-spacing: 0.3px; }
     td:first-child, th:first-child { text-align: left; }
-    .table-wrap { max-height: 500px; overflow: auto; }
+    tbody tr:nth-child(even) { background: #f8f9fc; }
+    .table-wrap { max-height: 500px; overflow: auto; border-radius: 8px; }
     .btn-small { padding: 6px 14px; font-size: 13px; }
     .breadcrumb { margin-bottom: 8px; font-size: 14px; }
-    .breadcrumb-link { color: #0f3460; cursor: pointer; text-decoration: underline; }
-    .tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto; padding: 0 20px; }
-    .tab-btn { background: #e8e8e8; color: #555; border-radius: 6px 6px 0 0; padding: 10px 20px; }
-    .tab-btn.active { background: #fff; color: #0f3460; box-shadow: 0 -2px 4px rgba(0,0,0,0.05); }
+    .breadcrumb-link { color: #0f3460; cursor: pointer; text-decoration: underline; font-weight: 600; }
+
+    /* ヘッダー: ロゴ+アプリ名(ボーナス・カデパ風) */
+    .app-header { background: linear-gradient(135deg, #16213e, #0a0a16); border-bottom: 3px solid #f9c74f; box-shadow: 0 4px 20px rgba(0,0,0,0.35); }
+    .app-header-inner { max-width: 1100px; margin: 0 auto; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
+    .logo-mark { flex-shrink: 0; width: 48px; height: 48px; border-radius: 10px; background: linear-gradient(145deg, #f9c74f, #e94560); display: flex; align-items: center; justify-content: center; font-family: 'Rocknroll One', sans-serif; font-size: 26px; font-weight: 700; color: #16213e; transform: rotate(-6deg); animation: logo-glow 2.4s ease-in-out infinite; }
+    @keyframes logo-glow {
+      0%, 100% { box-shadow: 0 0 14px rgba(249,199,79,0.55), inset 0 2px 4px rgba(255,255,255,0.4); }
+      50% { box-shadow: 0 0 24px rgba(249,199,79,0.9), inset 0 2px 4px rgba(255,255,255,0.4); }
+    }
+    .app-title-group { flex: 1; min-width: 0; }
+    .app-title { font-family: 'Rocknroll One', sans-serif; font-size: 1.7rem; letter-spacing: 2px; margin: 0; background: linear-gradient(90deg, #f9c74f, #fff8e0, #f9c74f); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 14px rgba(249,199,79,0.35); }
+    .app-tagline { font-size: 11px; color: #8a94b8; letter-spacing: 1px; margin-top: 2px; }
+    #today-date { font-size: 12px; color: #8a94b8; white-space: nowrap; flex-shrink: 0; }
+
+    .tabs { display: flex; gap: 4px; max-width: 1100px; margin: 0 auto; padding: 0 20px; background: #12121f; }
+    .tab-btn { background: transparent; color: #8a94b8; border-radius: 0; padding: 12px 22px; border-bottom: 3px solid transparent; }
+    .tab-btn:hover { color: #c7cee0; }
+    .tab-btn.active { background: transparent; color: #f9c74f; border-bottom-color: #f9c74f; text-shadow: 0 0 8px rgba(249,199,79,0.45); box-shadow: none; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
-    .tendency-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
-    .tendency-chip { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 10px 14px; font-size: 13px; min-width: 220px; }
-    .tendency-poles { display: flex; justify-content: space-between; font-weight: 600; color: #333; margin-bottom: 8px; }
-    .tendency-pole.active { color: #0f3460; }
-    .tendency-track { position: relative; height: 6px; border-radius: 3px; background: #e5e5e5; margin: 0 6px; }
-    .tendency-marker { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: #0f3460; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px #fff; }
+
+    /* 店舗×機種セレクタ */
+    .selector-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .selector-bar select { font-size: 15px; padding: 10px 14px; min-width: 160px; }
+
+    /* 本日予測: 一番の売りなので最大に見せる */
+    .predict-card { background: linear-gradient(135deg, #0f3460, #16213e); color: #fff; border-radius: 12px; padding: 28px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(15,52,96,0.3); }
+    .predict-card h2 { color: #fff; font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
+    .predict-card .predict-meta { font-size: 13px; color: #b8c4dd; margin-top: 4px; }
+    .predict-card .btn-primary { background: #e94560; }
+    .predict-card .btn-primary:hover { background: #c73e54; }
+    .predict-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
+    .predict-cell { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; text-align: center; }
+    .predict-cell .machine-number { font-size: 1.5rem; font-weight: 700; }
+    .predict-cell .confidence-dots { margin-top: 6px; font-size: 14px; letter-spacing: 2px; color: #f9c74f; }
+
+    /* 傾向: 予測カード内で「根拠」として見せる */
+    .predict-basis { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.15); }
+    .predict-basis-title { font-size: 13px; color: #b8c4dd; font-weight: 600; }
+    .tendency-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+    .tendency-chip { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 14px; font-size: 13px; min-width: 200px; }
+    .tendency-poles { display: flex; justify-content: space-between; font-weight: 600; color: #dfe6f5; margin-bottom: 8px; }
+    .tendency-pole.active { color: #f9c74f; }
+    .tendency-track { position: relative; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.2); margin: 0 6px; }
+    .tendency-marker { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: #f9c74f; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(255,255,255,0.15); }
+
+    /* 履歴: 日付ごとの表(行クリックで専用ページへ遷移) */
+    .history-table tbody tr { cursor: pointer; transition: background 0.15s; }
+    .history-table tbody tr:hover { background: #f5f8ff; }
+    .history-table td:first-child { font-weight: 700; color: #16213e; }
+    .history-table td:last-child, .history-table th:last-child { text-align: center; }
+    .date-stat .stat-label { color: #999; margin-right: 4px; }
+    .highlight-row { display: flex; gap: 6px; justify-content: center; }
+    .highlight-badge { display: inline-block; min-width: 60px; text-align: center; font-size: 13px; font-weight: 700; color: #e94560; }
+    .highlight-badge.empty { visibility: hidden; }
+
+    /* 日付詳細ページの統計サマリー */
+    .stat-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+    .stat-chip { background: #f5f7fa; border-radius: 8px; padding: 8px 12px; font-size: 13px; min-width: 90px; text-align: center; }
+    .stat-chip .stat-chip-label { display: block; font-size: 11px; color: #999; }
+    .stat-chip .stat-chip-value { display: block; font-weight: 700; color: #16213e; margin-top: 2px; }
   </style>
 </head>
 <body>
-  <h1>スロットデータ抽出</h1>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <div class="logo-mark">7</div>
+      <div class="app-title-group">
+        <h1 class="app-title">スロヨミ</h1>
+        <div class="app-tagline">AIスロット設定分析・先読み予測</div>
+      </div>
+      <div id="today-date"></div>
+    </div>
+  </header>
 
   <div class="tabs">
-    <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">データ入力</button>
-    <button class="tab-btn" id="tab-btn-view" onclick="switchTab('view')">データ閲覧</button>
+    <button class="tab-btn active" id="tab-btn-view" onclick="switchTab('view')">データ閲覧</button>
+    <button class="tab-btn" id="tab-btn-input" onclick="switchTab('input')">データ入力</button>
   </div>
 
   <div class="container">
+    <!-- 閲覧タブ(メイン) -->
+    <div class="tab-panel active" id="tab-panel-view">
+      <!-- 店舗×機種セレクタ -->
+      <div class="card">
+        <h2>店舗・機種を選択</h2>
+        <div class="selector-bar">
+          <select id="view-store-select" onchange="setRoute({store: this.value, model: '', date: '', machine: ''})"><option value="">店舗を選択</option></select>
+          <select id="view-model-select" onchange="setRoute({model: this.value, date: '', machine: ''})"><option value="">機種を選択</option></select>
+          <button class="btn-primary btn-small" onclick="loadHistory()">再読込</button>
+        </div>
+      </div>
+
+      <!-- 日付詳細ページ -->
+      <div class="card" id="page-date-detail" style="display:none;">
+        <div class="breadcrumb"><span class="breadcrumb-link" onclick="setRoute({date:'',machine:''})">履歴データ</span> &gt; <strong id="date-detail-heading"></strong></div>
+        <div id="date-detail-summary" style="margin: 8px 0 12px; font-size: 14px; color: #555;"></div>
+        <div class="table-wrap" id="date-detail-table-wrap"></div>
+      </div>
+
+      <!-- 台番号詳細ページ -->
+      <div class="card" id="page-machine-detail" style="display:none;">
+        <div class="breadcrumb"><span class="breadcrumb-link" onclick="setRoute({date:'',machine:''})">履歴データ</span> &gt; <strong id="machine-detail-heading"></strong></div>
+        <div class="table-wrap" id="machine-detail-table-wrap"></div>
+      </div>
+
+      <div id="main-content" style="display:none;">
+        <!-- 本日予測(一番の売り) -->
+        <div class="predict-card">
+          <div class="actions" style="margin-top:0; justify-content: space-between;">
+            <div>
+              <h2 id="predict-title">🎯 本日の設定予測</h2>
+              <div class="predict-meta" id="predict-meta"></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn-primary" onclick="updatePrediction()">予測する</button>
+              <div class="spinner" id="predict-spinner"></div>
+            </div>
+          </div>
+          <div class="predict-grid" id="predict-grid"></div>
+
+          <!-- 傾向(予測の根拠として内包) -->
+          <div class="predict-basis">
+            <div class="actions" style="margin-top:0; justify-content: space-between;">
+              <span class="predict-basis-title">根拠: 店舗×機種の傾向</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn-primary btn-small" onclick="updateTendency()">傾向を更新する</button>
+                <div class="spinner" id="tendency-spinner"></div>
+              </div>
+            </div>
+            <div id="tendency-meta" style="font-size:12px; color:#b8c4dd; margin-top:4px;"></div>
+            <div class="tendency-grid" id="tendency-grid"></div>
+          </div>
+        </div>
+
+        <!-- 履歴データ(日付ごとに縦並び) -->
+        <div class="card">
+          <h2>履歴データ</h2>
+          <div id="history-list"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- 入力タブ -->
-    <div class="tab-panel active" id="tab-panel-input">
+    <div class="tab-panel" id="tab-panel-input">
       <div class="card">
         <h2>スクリーンショット画像から抽出</h2>
         <div class="actions">
@@ -76,57 +208,89 @@
         <img id="image-preview" style="display:none; max-width: 100%; max-height: 300px; margin-top: 8px; border: 1px solid #ddd; border-radius: 6px;">
       </div>
     </div>
-
-    <!-- 閲覧タブ -->
-    <div class="tab-panel" id="tab-panel-view">
-      <div class="card">
-        <h2>履歴（蓄積データ）</h2>
-        <div class="actions" style="margin-top: 0;">
-          <button class="btn-primary" onclick="loadHistory()">更新</button>
-        </div>
-        <div class="breadcrumb" id="history-breadcrumb"></div>
-        <div id="tendency-panel" style="display:none; background:#f5f5f5; border-radius:6px; padding:12px; margin-bottom:12px;">
-          <div class="actions" style="margin-top:0;">
-            <strong>店舗×機種の設定傾向</strong>
-            <button class="btn-primary btn-small" onclick="updateTendency()">傾向を更新する</button>
-            <div class="spinner" id="tendency-spinner"></div>
-          </div>
-          <div id="tendency-meta" style="font-size:12px; color:#777; margin-top:4px;"></div>
-          <div class="tendency-grid" id="tendency-grid"></div>
-        </div>
-        <div id="predict-panel" style="display:none; background:#f5f5f5; border-radius:6px; padding:12px; margin-bottom:12px;">
-          <div class="actions" style="margin-top:0;">
-            <strong>翌日の設定予測</strong>
-            <button class="btn-primary btn-small" onclick="updatePrediction()">予測する</button>
-            <div class="spinner" id="predict-spinner"></div>
-          </div>
-          <div id="predict-meta" style="font-size:12px; color:#777; margin-top:4px;"></div>
-          <div class="table-wrap" id="predict-table-wrap" style="display:none; margin-top: 8px;">
-            <table id="predict-table"></table>
-          </div>
-        </div>
-        <div id="history-nav"></div>
-        <div class="table-wrap" id="history-table-wrap" style="display:none; margin-top: 12px;">
-          <table id="history-table"></table>
-        </div>
-      </div>
-    </div>
   </div>
 
   <script>
     var API_URL = window.API_URL || 'http://localhost:8000';
     let selectedImage = null; // { base64, mediaType }
 
-    // --- タブ切り替え ---
-    function switchTab(tab) {
-      document.getElementById('tab-btn-input').classList.toggle('active', tab === 'input');
-      document.getElementById('tab-btn-view').classList.toggle('active', tab === 'view');
-      document.getElementById('tab-panel-input').classList.toggle('active', tab === 'input');
-      document.getElementById('tab-panel-view').classList.toggle('active', tab === 'view');
-      if (tab === 'view') loadHistory();
+    // --- ハッシュルーティング ---
+    function getRoute() {
+      const params = new URLSearchParams(location.hash.slice(1));
+      return {
+        tab: params.get('tab') || 'view',
+        store: params.get('store') || '',
+        model: params.get('model') || '',
+        date: params.get('date') || '',
+        machine: params.get('machine') || '',
+      };
     }
 
-    // --- 日付プルダウン ---
+    function setRoute(partial) {
+      const next = { ...getRoute(), ...partial };
+      const params = new URLSearchParams();
+      params.set('tab', next.tab);
+      if (next.store) params.set('store', next.store);
+      if (next.model) params.set('model', next.model);
+      if (next.date) params.set('date', next.date);
+      if (next.machine) params.set('machine', next.machine);
+      location.hash = params.toString();
+    }
+
+    function switchTab(tab) {
+      setRoute({ tab });
+    }
+
+    window.addEventListener('hashchange', renderRoute);
+
+    function renderRoute() {
+      const route = getRoute();
+      document.getElementById('tab-btn-input').classList.toggle('active', route.tab === 'input');
+      document.getElementById('tab-btn-view').classList.toggle('active', route.tab === 'view');
+      document.getElementById('tab-panel-input').classList.toggle('active', route.tab === 'input');
+      document.getElementById('tab-panel-view').classList.toggle('active', route.tab === 'view');
+      if (route.tab !== 'view') return;
+
+      populateStoreOptions(route.store);
+      populateModelOptions(route.store, route.model);
+      viewSelection = { store: route.store, model: route.model };
+
+      const mainContent = document.getElementById('main-content');
+      const dateDetail = document.getElementById('page-date-detail');
+      const machineDetail = document.getElementById('page-machine-detail');
+
+      if (!route.store || !route.model) {
+        mainContent.style.display = 'none';
+        dateDetail.style.display = 'none';
+        machineDetail.style.display = 'none';
+        return;
+      }
+
+      if (route.date) {
+        mainContent.style.display = 'none';
+        machineDetail.style.display = 'none';
+        dateDetail.style.display = 'block';
+        renderDateDetailPage(route.date);
+        return;
+      }
+
+      if (route.machine) {
+        mainContent.style.display = 'none';
+        dateDetail.style.display = 'none';
+        machineDetail.style.display = 'block';
+        renderMachineDetailPage(route.machine);
+        return;
+      }
+
+      dateDetail.style.display = 'none';
+      machineDetail.style.display = 'none';
+      mainContent.style.display = 'block';
+      showTendencyPanel();
+      updatePrediction();
+      renderHistoryList();
+    }
+
+    // --- 日付プルダウン(データ入力タブ用) ---
     function initDateSelects() {
       const today = new Date();
       const yearSelect = document.getElementById('year-select');
@@ -157,6 +321,14 @@
     }
 
     initDateSelects();
+
+    function formatDateJa(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][new Date(y, m - 1, d).getDay()];
+      return `${y}年${m}月${d}日(${weekday})`;
+    }
+
+    document.getElementById('today-date').textContent = '今日: ' + formatDateJa(new Date().toLocaleDateString('sv-SE'));
 
     function onImageSelected(event) {
       const file = event.target.files[0];
@@ -211,7 +383,7 @@
       }
     }
 
-    // --- 履歴 ---
+    // --- 履歴データ取得 ---
     function parseCsv(text) {
       const lines = text.trim().split(/\r?\n/);
       const headers = lines[0].split(',');
@@ -224,15 +396,14 @@
     }
 
     let historyRows = [];
-    let historyState = { store: null, date: null, model: null, machine: null };
+    let viewSelection = { store: null, model: null };
 
     async function loadHistory() {
       try {
         const res = await fetch(API_URL + '/api/history');
         const text = await res.text();
         historyRows = parseCsv(text);
-        historyState = { store: null, date: null, model: null, machine: null };
-        renderHistoryNav();
+        renderRoute();
       } catch (e) {
         console.error('履歴の取得に失敗しました', e);
       }
@@ -242,104 +413,138 @@
       return [...new Set(values.filter(v => v))].sort();
     }
 
-    function renderBreadcrumb() {
-      const parts = [{ label: '店舗名を選択', state: {} }];
-      if (historyState.store) parts.push({ label: historyState.store, state: { store: historyState.store } });
-      if (historyState.date) parts.push({ label: historyState.date, state: { store: historyState.store, date: historyState.date } });
-      if (historyState.model) parts.push({ label: historyState.model, state: { store: historyState.store, date: historyState.date, model: historyState.model } });
-      if (historyState.machine) parts.push({ label: `台番号 ${historyState.machine}`, state: { ...historyState } });
+    // --- 店舗×機種セレクタ(トップレベル) ---
+    function populateStoreOptions(currentStore) {
+      const storeSelect = document.getElementById('view-store-select');
+      const stores = uniqueSorted(historyRows.map(r => r.store_name));
+      storeSelect.innerHTML = '<option value="">店舗を選択</option>' +
+        stores.map(s => `<option value="${s}">${s}</option>`).join('');
+      storeSelect.value = stores.includes(currentStore) ? currentStore : '';
+    }
 
-      document.getElementById('history-breadcrumb').innerHTML = parts.map((p, i) => {
-        const isLast = i === parts.length - 1;
-        return isLast
-          ? `<strong>${p.label}</strong>`
-          : `<span class="breadcrumb-link" onclick='goToHistoryState(${JSON.stringify(p.state)})'>${p.label}</span> &gt; `;
+    function populateModelOptions(currentStore, currentModel) {
+      const modelSelect = document.getElementById('view-model-select');
+      const models = uniqueSorted(historyRows.filter(r => r.store_name === currentStore).map(r => r.model_name));
+      modelSelect.innerHTML = '<option value="">機種を選択</option>' +
+        models.map(m => `<option value="${m}">${m}</option>`).join('');
+      modelSelect.value = models.includes(currentModel) ? currentModel : '';
+    }
+
+    // --- 履歴データ(日付ごとに縦並び) ---
+    const HIGH_SETTING_THRESHOLD = 5;
+
+    function isHighSetting(row) {
+      return parseInt(row.estimated_setting, 10) >= HIGH_SETTING_THRESHOLD;
+    }
+
+    const HIGHLIGHT_SLOT_COUNT = 3;
+
+    function buildHighlightRowHtml(rows) {
+      const top = rows
+        .filter(isHighSetting)
+        .sort((a, b) => (parseInt(b.estimated_setting, 10) || 0) - (parseInt(a.estimated_setting, 10) || 0))
+        .slice(0, HIGHLIGHT_SLOT_COUNT)
+        .map(r => r.machine_number);
+      const slots = Array.from({ length: HIGHLIGHT_SLOT_COUNT }, (_, i) =>
+        top[i]
+          ? `<span class="highlight-badge">◎${top[i]}</span>`
+          : `<span class="highlight-badge empty">◎</span>`
+      );
+      return `<span class="highlight-row">${slots.join('')}</span>`;
+    }
+
+    function sumDiffMedals(rows) {
+      return rows.reduce((sum, r) => sum + (parseInt(r.diff_medals, 10) || 0), 0);
+    }
+
+    const AVG_FIELDS = [
+      { key: 'diff_medals', label: '平均差枚', decimals: 0 },
+      { key: 'games', label: '平均G数', decimals: 0 },
+      { key: 'payout_rate', label: '平均出率', decimals: 1 },
+    ];
+
+    function avgOf(rows, key) {
+      const values = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+      if (!values.length) return null;
+      return values.reduce((a, b) => a + b, 0) / values.length;
+    }
+
+    function buildAverageStatsHtml(rows) {
+      return AVG_FIELDS.map(f => {
+        const avg = avgOf(rows, f.key);
+        if (avg === null) return '';
+        return `<span class="date-stat"><span class="stat-label">${f.label}</span>${avg.toFixed(f.decimals)}</span>`;
       }).join('');
     }
 
-    function goToHistoryState(state) {
-      historyState = { store: state.store || null, date: state.date || null, model: state.model || null, machine: state.machine || null };
-      renderHistoryNav();
-    }
-
-    function renderButtonList(items) {
-      if (!items.length) return '<p>データがありません</p>';
-      return '<div class="actions" style="margin-top: 0;">' +
-        items.map(v => `<button class="btn-primary btn-small" onclick='selectHistoryValue(${JSON.stringify(v)})'>${v}</button>`).join('') +
-        '</div>';
-    }
-
-    function selectHistoryValue(value) {
-      if (!historyState.store) historyState.store = value;
-      else if (!historyState.date) historyState.date = value;
-      else if (!historyState.model) historyState.model = value;
-      renderHistoryNav();
-    }
-
     function selectMachine(machineNumber) {
-      historyState.machine = machineNumber;
-      renderHistoryNav();
+      setRoute({ date: '', machine: machineNumber });
     }
 
-    function renderHistoryNav() {
-      renderBreadcrumb();
-      const navEl = document.getElementById('history-nav');
-      const tableWrap = document.getElementById('history-table-wrap');
+    function navigateToDate(date) {
+      setRoute({ date, machine: '' });
+    }
 
-      if (!historyState.store) {
-        tableWrap.style.display = 'none';
-        document.getElementById('tendency-panel').style.display = 'none';
-        document.getElementById('predict-panel').style.display = 'none';
-        navEl.innerHTML = renderButtonList(uniqueSorted(historyRows.map(r => r.store_name)));
-        return;
-      }
-      if (!historyState.date) {
-        tableWrap.style.display = 'none';
-        document.getElementById('tendency-panel').style.display = 'none';
-        document.getElementById('predict-panel').style.display = 'none';
-        const dates = historyRows.filter(r => r.store_name === historyState.store).map(r => r.date);
-        navEl.innerHTML = renderButtonList(uniqueSorted(dates));
-        return;
-      }
-      if (!historyState.model) {
-        tableWrap.style.display = 'none';
-        document.getElementById('tendency-panel').style.display = 'none';
-        document.getElementById('predict-panel').style.display = 'none';
-        const models = historyRows
-          .filter(r => r.store_name === historyState.store && r.date === historyState.date)
-          .map(r => r.model_name);
-        navEl.innerHTML = renderButtonList(uniqueSorted(models));
+    function renderHistoryList() {
+      const listEl = document.getElementById('history-list');
+      const dates = uniqueSorted(
+        historyRows.filter(r => r.store_name === viewSelection.store && r.model_name === viewSelection.model).map(r => r.date)
+      ).reverse();
+
+      if (!dates.length) {
+        listEl.innerHTML = '<p>データがありません</p>';
         return;
       }
 
-      showTendencyPanel();
-      document.getElementById('predict-panel').style.display = 'block';
-
-      navEl.innerHTML = '';
-      tableWrap.style.display = 'block';
-
-      if (!historyState.machine) {
+      let html = '<div class="table-wrap"><table class="history-table"><thead><tr>';
+      html += '<th>日付</th><th>合計差枚</th>' + AVG_FIELDS.map(f => `<th>${f.label}</th>`).join('') + '<th>注目台</th>';
+      html += '</tr></thead><tbody>';
+      dates.forEach(date => {
         const rows = historyRows.filter(r =>
-          r.store_name === historyState.store && r.date === historyState.date && r.model_name === historyState.model
+          r.store_name === viewSelection.store && r.model_name === viewSelection.model && r.date === date
         );
-        renderMachineListTable(rows);
-        return;
-      }
-
-      // 台番号単体：日付を問わず店舗×機種×台番号で全期間のデータを集計
-      const machineRows = historyRows
-        .filter(r => r.store_name === historyState.store && r.model_name === historyState.model && r.machine_number === historyState.machine)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      renderMachineHistoryTable(machineRows);
+        const total = sumDiffMedals(rows);
+        html += `<tr onclick='navigateToDate(${JSON.stringify(date)})'>`;
+        html += `<td>${date}</td>`;
+        html += `<td>${total >= 0 ? '+' : ''}${total}</td>`;
+        html += AVG_FIELDS.map(f => {
+          const avg = avgOf(rows, f.key);
+          return `<td>${avg === null ? '-' : avg.toFixed(f.decimals)}</td>`;
+        }).join('');
+        html += `<td>${buildHighlightRowHtml(rows)}</td>`;
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      listEl.innerHTML = html;
     }
 
+    function renderDateDetailPage(date) {
+      const rows = historyRows.filter(r =>
+        r.store_name === viewSelection.store && r.model_name === viewSelection.model && r.date === date
+      );
+      const total = sumDiffMedals(rows);
+      document.getElementById('date-detail-heading').textContent = formatDateJa(date);
+      document.getElementById('date-detail-summary').innerHTML =
+        `<span class="date-stat"><span class="stat-label">合計差枚</span>${total >= 0 ? '+' : ''}${total}</span>` +
+        buildAverageStatsHtml(rows) +
+        buildHighlightRowHtml(rows);
+      document.getElementById('date-detail-table-wrap').innerHTML = buildMachineListTableHtml(rows);
+    }
+
+    function renderMachineDetailPage(machineNumber) {
+      const rows = historyRows
+        .filter(r => r.store_name === viewSelection.store && r.model_name === viewSelection.model && r.machine_number === machineNumber)
+        .sort((a, b) => b.date.localeCompare(a.date));
+      document.getElementById('machine-detail-heading').textContent = `台番号 ${machineNumber}`;
+      document.getElementById('machine-detail-table-wrap').innerHTML = buildMachineHistoryTableHtml(rows);
+    }
+
+    // --- 傾向 ---
     async function showTendencyPanel() {
-      const panel = document.getElementById('tendency-panel');
-      panel.style.display = 'block';
       document.getElementById('tendency-meta').textContent = '読込中...';
       document.getElementById('tendency-grid').innerHTML = '';
       try {
-        const params = new URLSearchParams({ store_name: historyState.store, model_name: historyState.model });
+        const params = new URLSearchParams({ store_name: viewSelection.store, model_name: viewSelection.model });
         const res = await fetchWithTimeout(API_URL + '/api/tendency?' + params.toString());
         const json = await res.json();
         renderTendency(json.tendency);
@@ -391,7 +596,7 @@
         const res = await fetchWithTimeout(API_URL + '/api/tendency', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ store_name: historyState.store, model_name: historyState.model }),
+          body: JSON.stringify({ store_name: viewSelection.store, model_name: viewSelection.model }),
         }, 60000);
         const json = await res.json();
         if (json.error) throw new Error(json.error);
@@ -403,55 +608,60 @@
       }
     }
 
+    // --- 本日予測 ---
     async function updatePrediction() {
       const spinner = document.getElementById('predict-spinner');
       const metaEl = document.getElementById('predict-meta');
-      const tableWrap = document.getElementById('predict-table-wrap');
+      const gridEl = document.getElementById('predict-grid');
       spinner.style.display = 'inline-block';
       metaEl.textContent = '';
+      gridEl.innerHTML = '';
       try {
         const res = await fetchWithTimeout(API_URL + '/api/predict', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ store_name: historyState.store, model_name: historyState.model }),
+          body: JSON.stringify({ store_name: viewSelection.store, model_name: viewSelection.model }),
         }, 60000);
         const json = await res.json();
         if (json.error) throw new Error(json.error);
-        renderPrediction(json.predictions);
+        renderPrediction(json.target_date, json.predictions);
       } catch (e) {
-        alert('予測エラー: ' + e.message);
+        metaEl.textContent = '予測できませんでした: ' + e.message;
       } finally {
         spinner.style.display = 'none';
       }
     }
 
-    function renderPrediction(predictions) {
+    function renderPrediction(targetDate, predictions) {
+      const titleEl = document.getElementById('predict-title');
       const metaEl = document.getElementById('predict-meta');
-      const tableWrap = document.getElementById('predict-table-wrap');
+      const gridEl = document.getElementById('predict-grid');
+      titleEl.textContent = targetDate ? `🎯 ${formatDateJa(targetDate)} の設定予測` : '🎯 本日の設定予測';
       if (!predictions || !predictions.length) {
         metaEl.textContent = '根拠の強い候補はありませんでした';
-        tableWrap.style.display = 'none';
+        gridEl.innerHTML = '';
         return;
       }
       metaEl.textContent = `本命候補 ${predictions.length}台`;
-      let html = '<thead><tr><th>台番号</th><th>確信度</th></tr></thead><tbody>';
-      predictions.forEach(p => {
+      gridEl.innerHTML = predictions.map(p => {
         const conf = p.confidence ?? 0;
-        html += `<tr><td>${p.machine_number}</td><td>${'●'.repeat(conf)}${'○'.repeat(5 - conf)}</td></tr>`;
-      });
-      html += '</tbody>';
-      document.getElementById('predict-table').innerHTML = html;
-      tableWrap.style.display = 'block';
+        return `
+          <div class="predict-cell">
+            <div class="machine-number">${p.machine_number}</div>
+            <div class="confidence-dots">${'●'.repeat(conf)}${'○'.repeat(5 - conf)}</div>
+          </div>
+        `;
+      }).join('');
     }
 
-    function renderMachineListTable(data) {
+    function buildMachineListTableHtml(data) {
       const headers = {
         machine_number: '台番号', diff_medals: '差枚',
         games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
         combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率', estimated_setting: '推定設定'
       };
       const keys = Object.keys(headers);
-      let html = '<thead><tr>';
+      let html = '<table><thead><tr>';
       keys.forEach(k => html += `<th>${headers[k]}</th>`);
       html += '</tr></thead><tbody>';
       data.forEach(row => {
@@ -465,18 +675,18 @@
         });
         html += '</tr>';
       });
-      html += '</tbody>';
-      document.getElementById('history-table').innerHTML = html;
+      html += '</tbody></table>';
+      return html;
     }
 
-    function renderMachineHistoryTable(data) {
+    function buildMachineHistoryTableHtml(data) {
       const headers = {
         date: '日付', diff_medals: '差枚',
         games: 'G数', payout_rate: '出率', bb: 'BB', rb: 'RB',
         combined_rate: '合成', bb_rate: 'BB率', rb_rate: 'RB率', estimated_setting: '推定設定'
       };
       const keys = Object.keys(headers);
-      let html = '<thead><tr>';
+      let html = '<table><thead><tr>';
       keys.forEach(k => html += `<th>${headers[k]}</th>`);
       html += '</tr></thead><tbody>';
       data.forEach(row => {
@@ -484,10 +694,11 @@
         keys.forEach(k => html += `<td>${row[k] ?? ''}</td>`);
         html += '</tr>';
       });
-      html += '</tbody>';
-      document.getElementById('history-table').innerHTML = html;
+      html += '</tbody></table>';
+      return html;
     }
 
+    loadHistory();
   </script>
 </body>
 </html>

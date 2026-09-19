@@ -1,24 +1,42 @@
-"""傾向データ(2軸)に基づく決定的な翌日予測ロジック。AIの自由判断は使わない。"""
+"""傾向データ(2軸)に基づく決定的な当日設定予測ロジック。AIの自由判断は使わない。
+
+蓄積データの「日付」は台データが実際に表示された日(=前日分)を指す。
+店舗のデータは翌朝にしか閲覧できないため、蓄積データの最新日の翌日は
+カレンダー上の「翌日」ではなく「本日」に相当する。
+"""
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
+JST = timezone(timedelta(hours=9))
 DECAY_RATE = 0.5  # 1日古くなるごとに重みが半分になる
 CONFIDENCE_THRESHOLD = 4
 SCORE_MARGIN = 0.5  # 最高/最低スコアからこの範囲内を「本命」とみなす
 
 
-def predict_next_day(rows: list[dict], tendency_items: list[dict]) -> list[dict]:
+def predict_next_day(rows: list[dict], tendency_items: list[dict]) -> dict:
+    target_date = _target_date(rows)
+    if not target_date:
+        raise ValueError("蓄積データがないため予測できません")
+
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    if target_date != today:
+        raise ValueError(
+            f"直近のデータが古く、本日({today})の予測ができません"
+            f"(蓄積データの最新日から算出した予測対象日: {target_date})。"
+            "前日分のデータを抽出してから再度お試しください。"
+        )
+
     axes = {item["key"]: item.get("level", 3) for item in tendency_items}
     sueoki_age = axes.get("sueoki_age", 3)
     layout = axes.get("layout", 3)
 
     if sueoki_age == 3:
-        return []  # 据え置き/上げ下げのどちらに寄るか判断できないため予測しない
+        return {"target_date": target_date, "predictions": []}  # 据え置き/上げ下げのどちらに寄るか判断できないため予測しない
 
     scores = _weighted_scores(rows)
     if not scores:
-        return []
+        return {"target_date": target_date, "predictions": []}
 
     direction = "high" if sueoki_age > 3 else "low"
     axis_strength = abs(sueoki_age - 3)  # 1 or 2
@@ -51,7 +69,15 @@ def predict_next_day(rows: list[dict], tendency_items: list[dict]) -> list[dict]
         if conf >= CONFIDENCE_THRESHOLD
     ]
     results.sort(key=lambda x: (-x["confidence"], _machine_sort_key(x["machine_number"])))
-    return results
+    return {"target_date": target_date, "predictions": results}
+
+
+def _target_date(rows: list[dict]) -> str | None:
+    dates = sorted({r["date"] for r in rows if r.get("date")})
+    if not dates:
+        return None
+    latest_date = datetime.strptime(dates[-1], "%Y-%m-%d")
+    return (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def _weighted_scores(rows: list[dict]) -> dict[str, float]:

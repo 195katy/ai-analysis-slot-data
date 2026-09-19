@@ -106,5 +106,8 @@ def _handle_predict(event) -> dict:
     tendency = load_tendency(store_name, model_name)
     if not tendency:
         return _response(400, {"error": "先に「傾向を更新する」を実行してください"})
-    predictions = predict_next_day(rows, tendency["items"])
-    return _response(200, {"predictions": predictions})
+    try:
+        result = predict_next_day(rows, tendency["items"])
+    except ValueError as e:
+        return _response(400, {"error": str(e)})
+    return _response(200, result)
